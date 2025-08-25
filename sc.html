@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SunCalc</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #eef7f1;
+      margin: 0;
+      padding: 20 px;
+    }
+
+    /* Updated navbar for sustainability theme */
+    nav ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+      background-color: #2e7d32;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+    }
+
+    nav ul li {
+      float : left;
+      display: inline-block;
+      padding: 10 px;
+    }
+
+    nav ul li a {
+      color: white;
+      text-align: center;
+      padding: 14 px 20 px;
+      text-decoration: none;
+      font-size: 16 px;
+    }
+
+    nav ul li a:hover {
+      background-color: #66bb6a;
+      border-radius: 5px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #2e7d32;
+      font-size: 32px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      margin-top: 10px;
+      color: #333;
+      font-weight: bold;
+    }
+
+    input, select, button {
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #2e7d32;
+      color: white;
+      border: none;
+      margin-top: 20px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #66bb6a;
+    }
+
+    #output {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 18px;
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      background-color: #ffffff;
+      margin: 10% auto;
+      padding: 30px;
+      border: 1px solid #ddd;
+      width: 80%;
+      max-width: 600px;
+      text-align: center;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+      color: #000;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    /* Popup text styling */
+    .modal-content h2 {
+      font-size: 24px;
+      color: #2e7d32;
+    }
+
+    .modal-content p {
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav>
+    <ul>
+      <li><a href="mp.html">Home</a></li>
+      <li><a href="sc.html">SunCalc</a></li>
+      <li><a href="fgrid.html">Energy Demand</a></li>
+      <li><a href="fpg.html">Defect Detection</a></li>
+      <li><a href="sc.html">About</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h1>SunCalc</h1>
+
+    <form id="solar-form">
+      <label for="address">Address or Latitude/Longitude:</label>
+      <input type="text" id="address" placeholder="Enter address or lat,lon" required>
+
+      <label for="system-size">System Size (kW):</label>
+      <input type="number" id="system-size" step="0.1" min="0" placeholder="Enter system size in kW" required>
+
+      <label for="tilt">Array Tilt (degrees):</label>
+      <input type="number" id="tilt" step="1" min="0" max="90" placeholder="Enter tilt angle (0-90)" required>
+
+      <label for="azimuth">Array Azimuth (degrees):</label>
+      <input type="number" id="azimuth" step="1" min="0" max="360" placeholder="Enter azimuth angle (0-360)" required>
+
+      <label for="module-type">Module Type:</label>
+      <select id="module-type">
+        <option value="0">Standard</option>
+        <option value="1">Premium</option>
+        <option value="2">Thin Film</option>
+      </select>
+
+      <label for="losses">Losses (%):</label>
+      <input type="number" id="losses" step="1" min="0" max="100" value="14" required>
+
+      <button type="submit">Calculate Energy Production</button>
+    </form>
+  </div>
+
+  <!-- Modal Popup for Results -->
+  <div id="result-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Your Estimated Annual Energy Production</h2>
+      <p id="energy-output">-</p>
+      <p>This estimate is based on your provided location, solar panel system size, and technical parameters. Please note that actual production may vary based on real-world conditions such as shading, weather patterns, and maintenance. Always consult with a solar energy professional for an accurate assessment tailored to your site.</p>
+    </div>
+  </div>
+
+  <script>
+    // Handle form submission
+    document.getElementById('solar-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      // Get form values
+      const address = document.getElementById('address').value;
+      const systemSize = document.getElementById('system-size').value;
+      const tilt = document.getElementById('tilt').value;
+      const azimuth = document.getElementById('azimuth').value;
+      const moduleType = document.getElementById('module-type').value;
+      const losses = document.getElementById('losses').value;
+
+      // API key and URL (replace 'your_api_key' with your actual API key)
+      const apiKey = 'DxHEQxlbZUfB5UG39tm3JXTlRAkTOrItktgXkeqS';  // Replace with your actual API key
+      const apiUrl = `https://developer.nrel.gov/api/pvwatts/v6.json?api_key=${apiKey}&address=${encodeURIComponent(address)}&system_capacity=${systemSize}&module_type=${moduleType}&losses=${losses}&tilt=${tilt}&azimuth=${azimuth}&array_type=1&radius=0`;
+
+      // Fetch energy production data
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          // Check if there are any errors in the response
+          if (data.errors && data.errors.length > 0) {
+            alert('Error: ' + data.errors[0]);
+          } else if (data.outputs && data.outputs.ac_annual) {
+            const annualEnergy = data.outputs.ac_annual;
+            document.getElementById('energy-output').innerText = `${annualEnergy} kWh/year`;
+
+            // Show the modal with the result
+            const modal = document.getElementById('result-modal');
+            modal.style.display = 'block';
+          } else {
+            alert('Error: Unable to calculate energy production. Please check your inputs.');
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching data:', error);
+          alert('Error fetching data. Please check the input and try again.');
+        });
+    });
+
+    // Modal close functionality
+    const modal = document.getElementById('result-modal');
+    const span = document.getElementsByClassName('close')[0];
+
+    span.onclick = function() {
+      modal.style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+      if (event.target == modal) {
+        modal.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

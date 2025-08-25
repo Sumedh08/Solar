@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Solar Website</title>
+  <link rel="stylesheet" href="mp.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <header>
+    <nav>
+      <div class="logo">SOLAR.ai</div>
+      <ul class="nav-links">
+        <li><a href="sc.html">SunCalc</a></li>
+        <li><a href="fgrid.html">GridSmart</a></li>
+        <li><a href="fpg.html">PanelGuard</a></li>
+        <li><a href="sc.html">About</a></li> <!-- Moved About inside the same navbar -->
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Main Slides Section -->
+  <section class="slides-container">
+    <!-- SunCalc Slide -->
+    <div class="slide" id="suncalc">
+      <div class="overlay"></div> <!-- Overlay to improve text visibility -->
+      <div class="content">
+        <h1 class="main-heading">Unlock the Power of the Sun</h1>
+        <p class="subheading">Estimate Your Solar Energy Potential Effortlessly</p>
+        <p>With SunCalc, harness the full potential of solar energy. Our intuitive solar calculator, powered by the NREL PVWatts API, provides accurate estimates of solar energy production tailored to your location and system specifications.</p>
+        <a href="suncalc.html" class="cta-button">Try SunCalc Now →</a>
+      </div>
+    </div>
+
+    <!-- GridSmart Slide -->
+    <div class="slide" id="gridsmart">
+      <div class="overlay"></div>
+      <div class="content">
+        <h1 class="main-heading">Optimize Your Energy Consumption</h1>
+        <p class="subheading">Forecasting Energy Demand for a Sustainable Future</p>
+        <p>Introducing GridSmart, your solution for intelligent energy management. Our advanced forecasting model predicts energy demand across Brazil, enabling efficient grid optimization and better resource allocation.</p>
+        <a href="fgrid.html" class="cta-button">Explore GridSmart →</a>
+      </div>
+    </div>
+
+    <!-- PanelGuard Slide -->
+    <div class="slide" id="panelguard">
+      <div class="overlay"></div>
+      <div class="content">
+        <h1 class="main-heading">Safeguard Your Solar Panels</h1>
+        <p class="subheading">Identify and Mitigate Defects Early</p>
+        <p>PanelGuard helps maintain your solar panels' efficiency and longevity. This deep learning model classifies defects like bird waste, snow, and dust, allowing you to address issues before they escalate.</p>
+        <a href="fpg.html" class="cta-button">Get Started with PanelGuard →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section id="about" class="about">
+    <div class="content">
+      <h1>About Us</h1>
+      <p>At Solar.ai, our mission is to empower communities with sustainable solar energy solutions. We combine cutting-edge technology with easy-to-use tools that make solar energy management accessible to everyone. From forecasting energy demand to protecting your solar investment, our comprehensive services support every step of your solar journey.</p>
+    </div>
+  </section>
+
+  <!-- JavaScript for Sliding and Navigation -->
+  <script src="scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PanelGuard - Solar Panel Defect Detection</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f0f4f1;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+
+    nav {
+      background-color: #004d00;
+      padding: 15px;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      justify-content: space-around;
+      margin: 0;
+    }
+
+    nav ul li {
+      display: inline;
+    }
+
+    nav ul li a {
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 18px;
+      padding: 10px 20px;
+    }
+
+    nav ul li a:hover {
+      background-color: #66bb6a;
+      border-radius: 5px;
+    }
+
+    .container {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .container h1 {
+      font-size: 36px;
+      color: #004d00;
+      margin-bottom: 40px;
+    }
+
+    .upload-box {
+      display: inline-block;
+      padding: 40px;
+      border: 2px dashed #66bb6a;
+      background-color: #ffffff;
+      border-radius: 10px;
+      cursor: pointer;
+      position: relative;
+      width: 300px;
+      text-align: center;
+    }
+
+    .upload-box:hover {
+      background-color: #e6f7e9;
+    }
+
+    .upload-box input[type="file"] {
+      display: none;
+    }
+
+    .upload-box img {
+      width: 50px;
+      margin-bottom: 20px;
+    }
+
+    .upload-box p {
+      font-size: 16px;
+      color: #333;
+    }
+
+    button {
+      background-color: #004d00;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background-color: #66bb6a;
+    }
+
+    #result {
+      margin-top: 40px;
+      font-size: 18px;
+    }
+
+    .result-box {
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      margin: 20px auto;
+      text-align: center;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      padding: 20px;
+      background-color: #004d00;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <ul>
+      <li><a href="sc.html">SunCalc</a></li>
+      <li><a href="fgrid.html">GridSmart</a></li>
+      <li><a href="fpg.html">PanelGuard</a></li>
+      <li><a href="sc.html">About</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h1>PanelGuard - Solar Panel Defect Detection</h1>
+    
+    <label class="upload-box" for="imageUpload">
+      <input type="file" id="imageUpload" accept="image/*">
+      <img src="upload.png" alt="Upload Icon">
+      <p>Click or drag an image to upload</p>
+    </label>
+
+    <button onclick="uploadImage()">Analyze Image</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    async function uploadImage() {
+      const fileInput = document.getElementById('imageUpload');
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Please select an image file.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await axios.post('http://127.0.0.1:5011/predict', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        // Handle the result
+        if (response.data) {
+          const result = response.data;
+          document.getElementById('result').innerHTML = `
+            <div class="result-box">
+              <h2>Result:</h2>
+              <p>Defect Type: ${result.defect_type !== undefined ? result.defect_type : 'N/A'}</p>
+              <p>Is Defective: ${result.defective ? 'Yes' : 'No'}</p>
+            </div>
+          `;
+        } else {
+          document.getElementById('result').innerHTML = 'No result returned from the server.';
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('result').innerHTML = 'An error occurred during analysis. Please check the console for more details.';
+      }
+    }
+  </script>
+
+</body>
+</html>
