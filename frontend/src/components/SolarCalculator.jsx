@@ -58,7 +58,7 @@ const SolarCalculator = () => {
         setError(null);
 
         try {
-            const response = await axios.post('http://localhost:8081/api/calculator/calculate', locationData);
+            const response = await axios.post('https://solar-ai-backend-lfi2.onrender.com/api/calculator/calculate', locationData);
             let data = response.data;
             if (typeof data === 'string') {
                 try {
