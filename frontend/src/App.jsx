@@ -67,7 +67,7 @@ function App() {
 
             {/* Hero Section - SunCalc */}
             <section id="suncalc" className="snap-section">
-                <div className="section-image" style={{ backgroundImage: 'url(/image1st.jpg)' }} />
+                <div className="section-image" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}image1st.jpg)` }} />
                 <div className="section-overlay" />
                 <div className="section-content">
                     <motion.div
@@ -104,7 +104,7 @@ function App() {
 
             {/* GridSmart Section */}
             <section id="gridsmart" className="snap-section">
-                <div className="section-image" style={{ backgroundImage: 'url(/image2.jpg)' }} />
+                <div className="section-image" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}image2.jpg)` }} />
                 <div className="section-overlay" />
                 <div className="section-content">
                     <motion.div
@@ -137,7 +137,7 @@ function App() {
 
             {/* PanelGuard Section */}
             <section id="panelguard" className="snap-section">
-                <div className="section-image" style={{ backgroundImage: 'url(/image3.jpg)' }} />
+                <div className="section-image" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}image3.jpg)` }} />
                 <div className="section-overlay" />
                 <div className="section-content">
                     <motion.div
