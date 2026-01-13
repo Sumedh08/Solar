@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "C:\Users\Sumed\Downloads\solar.ai\solar-ai-platform\ml-services\app.py", line 1, in <module>
+    from fastapi import FastAPI, File, UploadFile
+ModuleNotFoundError: No module named 'fastapi'

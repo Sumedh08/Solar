@@ -45,20 +45,20 @@ const MaintenanceAlert = () => {
         }
     };
 
-    const getDefectColor = (defectType) => {
-        const colors = {
-            'Clean': 'green',
-            'Bird-drop': 'yellow',
-            'Dusty': 'orange',
-            'Electrical-damage': 'red',
-            'Physical-Damage': 'red',
-            'Snow-Covered': 'blue'
-        };
-        return colors[defectType] || 'gray';
-    };
-
     const getDefectIcon = (isDefective) => {
         return isDefective ? <AlertTriangle size={48} /> : <CheckCircle size={48} />;
+    };
+
+    const getRecommendation = (defectType) => {
+        const recommendations = {
+            'Bird-drop': 'Schedule cleaning to remove bird droppings and restore efficiency.',
+            'Dusty': 'Panel cleaning recommended to improve energy output.',
+            'Snow-Covered': 'Remove snow cover carefully or wait for natural melting.',
+            'Electrical-damage': '⚠️ URGENT: Contact maintenance team immediately for inspection and repair.',
+            'Physical-Damage': '⚠️ URGENT: Contact maintenance team immediately for inspection and repair.',
+            'Clean': 'Panel is in excellent condition. Continue regular monitoring for optimal performance.'
+        };
+        return recommendations[defectType] || 'Please consult with a solar panel technician.';
     };
 
     return (
@@ -219,11 +219,7 @@ const MaintenanceAlert = () => {
                                             Recommended Action
                                         </h4>
                                         <p className="text-sm text-orange-800">
-                                            {result.defect_type === 'Bird-drop' && 'Schedule cleaning to remove bird droppings and restore efficiency.'}
-                                            {result.defect_type === 'Dusty' && 'Panel cleaning recommended to improve energy output.'}
-                                            {result.defect_type === 'Snow-Covered' && 'Remove snow cover or wait for natural melting.'}
-                                            {(result.defect_type === 'Electrical-damage' || result.defect_type === 'Physical-Damage') &&
-                                                'Contact maintenance team immediately for inspection and repair.'}
+                                            {getRecommendation(result.defect_type)}
                                         </p>
                                     </div>
                                 )}
@@ -235,7 +231,7 @@ const MaintenanceAlert = () => {
                                             Status
                                         </h4>
                                         <p className="text-sm text-green-800">
-                                            Panel is in excellent condition. Continue regular monitoring for optimal performance.
+                                            {getRecommendation(result.defect_type)}
                                         </p>
                                     </div>
                                 )}

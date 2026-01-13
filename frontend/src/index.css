@@ -3,5 +3,13 @@
 @tailwind utilities;
 
 body {
-  @apply bg-slate-900 text-white;
+  @apply bg-white text-gray-900;
+  margin: 0;
+  padding: 0;
 }
+
+/* Ensure inputs are always interactive */
+input, textarea, select {
+  @apply text-gray-900;
+}
+
