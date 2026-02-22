@@ -15,19 +15,23 @@ const SolarCalculator = () => {
         azimuth: 180,
         lat: 20.5937,
         lon: 78.9629,
+        panel_type: 'mono',
+        inverter_type: 'string',
+        structure_type: 'standard',
     });
 
     // Step 2: Financial Details
     const [financialData, setFinancialData] = useState({
-        upfront_cost: 180000, // ₹60k per kW × 3kW
         annual_consumption: 3600, // kWh per year
         electricity_rate: 8, // ₹ per kWh
+        upfront_cost: 0, // Will be calculated after Step 1
     });
 
     const [nrelData, setNrelData] = useState(null);
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [shadingStatus, setShadingStatus] = useState("Low"); // Low, Moderate, High
 
     const handleLocationChange = (e) => {
         setLocationData({ ...locationData, [e.target.name]: e.target.value });
@@ -46,7 +50,7 @@ const SolarCalculator = () => {
         return null;
     };
 
-    // Step 1: Fetch NREL Data
+    // Step 1: Fetch NREL Data & OSM Shading
     const fetchNRELData = async () => {
         const validationError = validateInputs();
         if (validationError) {
@@ -58,7 +62,50 @@ const SolarCalculator = () => {
         setError(null);
 
         try {
-            const response = await axios.post('https://solar-ai-backend-lfi2.onrender.com/api/calculator/calculate', locationData);
+            // 1. Technical BOM Logic (Physics)
+            const moduleType = locationData.panel_type === 'mono' ? 1 : 0; // 1 = Premium (Mono), 0 = Standard (Poly)
+
+            // Base Losses (Wiring, Inverter, Dirt)
+            let baseLosses = 14;
+            if (locationData.inverter_type === 'micro') baseLosses -= 4; // Microinverters optimize shade/mismatch
+
+            // 2. Fetch OSM Shading Loss Heuristic
+            let shadingLoss = 3;
+            try {
+                const overpassUrl = `https://overpass-api.de/api/interpreter?data=[out:json];(way["building"](around:50,${locationData.lat},${locationData.lon}););out center;`;
+                const osmResponse = await axios.get(overpassUrl);
+                const buildings = osmResponse.data.elements;
+
+                if (buildings && buildings.length > 0) {
+                    buildings.forEach(b => {
+                        const dist = calculateDistance(locationData.lat, locationData.lon, b.center.lat, b.center.lon);
+                        if (dist < 20) shadingLoss += 8;
+                        else if (dist < 40) shadingLoss += 4;
+                    });
+                }
+                shadingLoss = Math.min(shadingLoss, 35);
+                if (shadingLoss > 15) setShadingStatus("High (Obstructions Detected)");
+                else if (shadingLoss > 3) setShadingStatus("Moderate (Nearby Structures)");
+                else setShadingStatus("Low (Clear Sky View)");
+            } catch (osmErr) {
+                console.warn("OSM Shading check failed:", osmErr);
+                setShadingStatus("Unknown (Using Heuristic)");
+            }
+
+            const finalLosses = baseLosses + (shadingLoss - 3);
+
+            // Console log for transparency (User can see this in F12)
+            console.log(`[Physics Engine] BaseLoss: ${baseLosses}%, Shading: ${shadingLoss}%, Total: ${finalLosses}%`);
+
+            // NREL Request with Technical Parameters
+            const nrelRequest = {
+                ...locationData,
+                module_type: moduleType,
+                losses: finalLosses
+            };
+
+            // 3. Fetch NREL Data
+            const response = await axios.post('https://solar-ai-backend-lfi2.onrender.com/api/calculator/calculate', nrelRequest);
             let data = response.data;
             if (typeof data === 'string') {
                 try {
@@ -71,6 +118,22 @@ const SolarCalculator = () => {
             if (data.errors && data.errors.length > 0) {
                 throw new Error(data.errors.join(", "));
             }
+
+            // 4. Calculate Suggested Upfront Cost for Step 2
+            const packageCosts = {
+                mono: 55000,
+                poly: 45000,
+                micro: 15000,
+                elevated: 10000
+            };
+            let costPerKw = locationData.panel_type === 'mono' ? packageCosts.mono : packageCosts.poly;
+            if (locationData.inverter_type === 'micro') costPerKw += packageCosts.micro;
+            if (locationData.structure_type === 'elevated') costPerKw += packageCosts.elevated;
+
+            setFinancialData(prev => ({
+                ...prev,
+                upfront_cost: costPerKw * locationData.system_capacity
+            }));
 
             setNrelData(data.outputs);
             setStep(2);
@@ -93,6 +156,22 @@ const SolarCalculator = () => {
         }
     };
 
+    // Helper: Haversine Distance
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+        const R = 6371e3; // metres
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
+    };
+
     // Calculate Government Subsidy (PM Surya Ghar)
     const calculateSubsidy = (capacity) => {
         const kw = parseFloat(capacity);
@@ -109,16 +188,17 @@ const SolarCalculator = () => {
 
         const annualGeneration = parseFloat(nrelData.ac_annual); // kWh/year from NREL
         const annualConsumption = parseFloat(financialData.annual_consumption);
-        const upfrontCost = parseFloat(financialData.upfront_cost);
         const electricityRate = parseFloat(financialData.electricity_rate);
         const subsidy = calculateSubsidy(locationData.system_capacity);
+
+        const upfrontCost = parseFloat(financialData.upfront_cost);
 
         // Calculate savings and grid export
         const selfConsumption = Math.min(annualGeneration, annualConsumption);
         const excessEnergy = Math.max(0, annualGeneration - annualConsumption);
 
-        const savingsFromSelfUse = selfConsumption * electricityRate; // ₹8/kWh saved
-        const earningsFromExport = excessEnergy * 3; // ₹3/kWh from grid
+        const savingsFromSelfUse = selfConsumption * electricityRate;
+        const earningsFromExport = excessEnergy * 3; // ₹3/kWh from grid (Export Rate)
         const totalAnnualBenefit = savingsFromSelfUse + earningsFromExport;
 
         // Net cost after subsidy
@@ -136,7 +216,8 @@ const SolarCalculator = () => {
             subsidy: subsidy.toFixed(0),
             netCost: netCost.toFixed(0),
             breakeven: breakeven.toFixed(1),
-            roi25Years: ((totalAnnualBenefit * 25) - netCost).toFixed(0)
+            roi25Years: ((totalAnnualBenefit * 25) - netCost).toFixed(0),
+            spaceRequired: (locationData.system_capacity * (locationData.panel_type === 'mono' ? 70 : 100)).toFixed(0)
         });
     };
 
@@ -220,6 +301,52 @@ const SolarCalculator = () => {
                                 <p className="text-xs text-gray-500 mt-1">Optimal: 15-25° for India</p>
                             </div>
 
+                            {/* BOM Selection in Step 1 */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Solar Panel Type *
+                                </label>
+                                <select
+                                    name="panel_type"
+                                    value={locationData.panel_type}
+                                    onChange={handleLocationChange}
+                                    className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="mono">Monocrystalline (Premium - High Yield)</option>
+                                    <option value="poly">Polycrystalline (Budget - Lower Yield)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Inverter & Efficiency *
+                                </label>
+                                <select
+                                    name="inverter_type"
+                                    value={locationData.inverter_type}
+                                    onChange={handleLocationChange}
+                                    className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="string">String Inverter (Standard)</option>
+                                    <option value="micro">Microinverters (Optimized for Shading)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Mounting Structure *
+                                </label>
+                                <select
+                                    name="structure_type"
+                                    value={locationData.structure_type}
+                                    onChange={handleLocationChange}
+                                    className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="standard">Standard Rooftop Fix</option>
+                                    <option value="elevated">Elevated Structure (G+1 height)</option>
+                                </select>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Latitude *
@@ -288,8 +415,10 @@ const SolarCalculator = () => {
                                     <p className="text-sm text-blue-900 flex items-start gap-2">
                                         <Info size={16} className="mt-0.5 flex-shrink-0" />
                                         <span>
-                                            <strong>Annual Generation:</strong> {parseFloat(nrelData.ac_annual).toFixed(0)} kWh/year
-                                            <br />Based on your location ({locationData.lat}, {locationData.lon})
+                                            <strong>Solar Intelligence:</strong>
+                                            <br />• Generation: {parseFloat(nrelData.ac_annual).toFixed(0)} kWh/yr
+                                            <br />• Shading Analysis: <span className={shadingStatus.includes("High") ? "text-red-600 font-bold" : shadingStatus.includes("Moderate") ? "text-yellow-600 font-bold" : "text-green-600 font-bold"}>{shadingStatus}</span>
+                                            <br />Location: ({parseFloat(locationData.lat).toFixed(3)}, {parseFloat(locationData.lon).toFixed(3)})
                                         </span>
                                     </p>
                                 </div>
@@ -297,30 +426,21 @@ const SolarCalculator = () => {
                                 <div className="space-y-6">
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Upfront System Cost (₹) *
+                                            Upfront System Cost (₹)
                                         </label>
-                                        <input
-                                            type="number"
-                                            name="upfront_cost"
-                                            value={financialData.upfront_cost}
-                                            onChange={handleFinancialChange}
-                                            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none"
-                                        />
-                                        <p className="text-xs text-gray-500 mt-1">Typical: ₹50,000-70,000 per kW</p>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Your Annual Electricity Consumption (kWh) *
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="annual_consumption"
-                                            value={financialData.annual_consumption}
-                                            onChange={handleFinancialChange}
-                                            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none"
-                                        />
-                                        <p className="text-xs text-gray-500 mt-1">Check your electricity bill for annual usage</p>
+                                        <div className="relative">
+                                            <IndianRupee className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                                            <input
+                                                type="number"
+                                                name="upfront_cost"
+                                                value={financialData.upfront_cost}
+                                                onChange={handleFinancialChange}
+                                                className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 pl-10 focus:ring-2 focus:ring-green-500 outline-none font-bold"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                                            <Info size={12} /> Auto-estimated based on hardware. You can manually override.
+                                        </p>
                                     </div>
 
                                     <div>
@@ -336,21 +456,34 @@ const SolarCalculator = () => {
                                         />
                                         <p className="text-xs text-gray-500 mt-1">Average in India: ₹6-10/kWh</p>
                                     </div>
-                                </div>
 
-                                <div className="flex gap-4 mt-8">
-                                    <button
-                                        onClick={() => setStep(1)}
-                                        className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-lg transition-all"
-                                    >
-                                        ← Back
-                                    </button>
-                                    <button
-                                        onClick={calculateROI}
-                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
-                                    >
-                                        Calculate ROI <TrendingUp size={20} />
-                                    </button>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Annual Electricity Consumption (kWh)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            name="annual_consumption"
+                                            value={financialData.annual_consumption}
+                                            onChange={handleFinancialChange}
+                                            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-4 mt-8">
+                                        <button
+                                            onClick={() => setStep(1)}
+                                            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-lg transition-all"
+                                        >
+                                            ← Back
+                                        </button>
+                                        <button
+                                            onClick={calculateROI}
+                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+                                        >
+                                            Calculate ROI <TrendingUp size={20} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -359,84 +492,58 @@ const SolarCalculator = () => {
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.95 }}
                                     animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl shadow-lg border border-green-200 p-8"
+                                    className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 flex flex-col gap-6"
                                 >
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-6">Your Solar Investment Analysis</h3>
+                                    <div className="flex justify-between items-center border-b pb-4">
+                                        <h3 className="text-2xl font-bold text-gray-900">Investment Analysis</h3>
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-wider">
+                                            <Zap size={14} /> High Viability
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                                            <p className="text-xs text-blue-600 font-semibold uppercase mb-1">Annual Generation</p>
+                                            <p className="text-3xl font-bold text-blue-900">{result.annualGeneration} <span className="text-lg font-medium opacity-60">kWh</span></p>
+                                        </div>
+                                        <div className="bg-indigo-50 rounded-xl p-5 border border-indigo-100">
+                                            <p className="text-xs text-indigo-600 font-semibold uppercase mb-1">Estimated Space</p>
+                                            <p className="text-3xl font-bold text-indigo-900">{result.spaceRequired} <span className="text-lg font-medium opacity-60">sq. ft.</span></p>
+                                        </div>
+                                    </div>
 
                                     <div className="space-y-4">
-                                        {/* Annual Generation */}
-                                        <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                            <p className="text-sm text-gray-600">Annual Solar Generation</p>
-                                            <p className="text-2xl font-bold text-blue-600">{result.annualGeneration} kWh</p>
-                                        </div>
-
-                                        {/* Energy Breakdown */}
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                                <p className="text-xs text-gray-600">Self-Consumed</p>
-                                                <p className="text-lg font-bold text-gray-900">{result.selfConsumption} kWh</p>
+                                        <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                            <div>
+                                                <p className="text-sm text-gray-500">Upfront Investment</p>
+                                                <p className="text-xl font-bold text-gray-900">₹{(result.upfrontCost / 100000).toFixed(2)} Lakhs</p>
                                             </div>
-                                            <div className="bg-white rounded-lg p-4 border border-green-200 bg-green-50">
-                                                <p className="text-xs text-green-700">Exported to Grid</p>
-                                                <p className="text-lg font-bold text-green-700">{result.excessEnergy} kWh</p>
+                                            <div className="text-right">
+                                                <p className="text-sm text-blue-600 font-semibold">- ₹{result.subsidy} Subsidy</p>
+                                                <p className="text-xs text-gray-500">Effective: ₹{(result.netCost / 100000).toFixed(2)}L</p>
                                             </div>
                                         </div>
 
-                                        {/* Financial Benefits */}
-                                        <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                            <p className="text-sm text-gray-600 mb-2">Annual Benefits</p>
-                                            <div className="space-y-1 text-sm">
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Savings (Self-use):</span>
-                                                    <span className="font-semibold">₹{result.savingsFromSelfUse}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Grid Export (@₹3/kWh):</span>
-                                                    <span className="font-semibold text-green-600">₹{result.earningsFromExport}</span>
-                                                </div>
-                                                <div className="flex justify-between pt-2 border-t">
-                                                    <span className="font-semibold">Total Annual Benefit:</span>
-                                                    <span className="font-bold text-green-600 text-lg">₹{result.totalAnnualBenefit}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Cost Breakdown */}
-                                        <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                            <p className="text-sm text-gray-600 mb-2">Investment Breakdown</p>
-                                            <div className="space-y-1 text-sm">
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Upfront Cost:</span>
-                                                    <span className="font-semibold">₹{result.upfrontCost}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">PM Surya Ghar Subsidy:</span>
-                                                    <span className="font-semibold text-blue-600">- ₹{result.subsidy}</span>
-                                                </div>
-                                                <div className="flex justify-between pt-2 border-t">
-                                                    <span className="font-semibold">Net Investment:</span>
-                                                    <span className="font-bold text-lg">₹{result.netCost}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* ROI Metrics */}
-                                        <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-lg p-6 text-white">
-                                            <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg shadow-green-200">
+                                            <div className="flex justify-between items-end mb-4">
                                                 <div>
-                                                    <p className="text-sm opacity-90">Breakeven Period</p>
-                                                    <p className="text-3xl font-bold">{result.breakeven} years</p>
+                                                    <p className="text-sm opacity-90 uppercase font-semibold">Annual Profit</p>
+                                                    <p className="text-4xl font-bold">₹{result.totalAnnualBenefit}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm opacity-90">25-Year Profit</p>
-                                                    <p className="text-3xl font-bold">₹{(parseFloat(result.roi25Years) / 100000).toFixed(1)}L</p>
+                                                <div className="text-right">
+                                                    <p className="text-sm opacity-90">Breakeven</p>
+                                                    <p className="text-2xl font-bold text-green-100">{result.breakeven} Years</p>
                                                 </div>
                                             </div>
+                                            <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                                                <div className="h-full bg-white w-3/4 rounded-full"></div>
+                                            </div>
+                                            <p className="text-xs mt-3 opacity-80 italic">Calculated using industry-standard grid export @₹3/kWh</p>
                                         </div>
 
-                                        <div className="bg-green-100 border border-green-300 rounded-lg p-4 text-center">
-                                            <p className="text-sm text-green-800">
-                                                ✅ <strong>Financially Viable!</strong> You'll recover your investment in {result.breakeven} years and earn ₹{(parseFloat(result.roi25Years) / 100000).toFixed(1)} lakhs over 25 years.
+                                        <div className="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                                            <p className="text-sm text-yellow-800">
+                                                <strong>25-Year Projection:</strong> You will generate approximately <strong>₹{(result.roi25Years / 100000).toFixed(1)} Lakhs</strong> in total benefits and save ~90,000kg of CO2 emissions.
                                             </p>
                                         </div>
                                     </div>
