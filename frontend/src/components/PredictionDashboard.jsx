@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Calendar, TrendingUp, Zap } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Calendar, TrendingUp, Zap, Settings } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const PredictionDashboard = () => {
     const [startDate, setStartDate] = useState('2024-01-01');
@@ -10,13 +10,25 @@ const PredictionDashboard = () => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [showSettings, setShowSettings] = useState(false);
+    const [mlApiUrl, setMlApiUrl] = useState(
+        localStorage.getItem('solar_ml_url') || 
+        import.meta.env.VITE_ML_API_URL || 
+        'https://solar-ai-ml.onrender.com'
+    );
+
+    const handleUrlChange = (e) => {
+        const newUrl = e.target.value;
+        setMlApiUrl(newUrl);
+        localStorage.setItem('solar_ml_url', newUrl);
+    };
 
     const fetchPrediction = async () => {
         setLoading(true);
         setError(null);
         try {
-            const mlApiUrl = import.meta.env.VITE_ML_API_URL || 'https://solar-ai-ml-prod.onrender.com';
-            const response = await axios.post(`${mlApiUrl}/predict/energy`, {
+            const cleanUrl = mlApiUrl.replace(/\/$/, "");
+            const response = await axios.post(`${cleanUrl}/predict/energy`, {
                 start_date: startDate,
                 end_date: endDate
             });
@@ -38,17 +50,56 @@ const PredictionDashboard = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto py-12">
-            <motion.div
+        <div className="max-w-7xl mx-auto py-12 px-4 relative">
+            {/* API Settings toggle */}
+            <div className="absolute top-4 right-4 z-10">
+                <button 
+                    onClick={() => setShowSettings(!showSettings)}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-white rounded-full transition-all shadow-sm bg-gray-50/50 backdrop-blur-sm"
+                    title="Configure ML API URL"
+                >
+                    <Settings size={20} className={showSettings ? "animate-spin-slow" : ""} />
+                </button>
+            </div>
+
+            <AnimatePresence>
+                {showSettings && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="mb-8 p-6 bg-blue-50 border border-blue-100 rounded-2xl shadow-inner max-w-md mx-auto"
+                    >
+                        <h4 className="text-sm font-bold text-blue-900 mb-3 uppercase tracking-wider">ML Connection Settings</h4>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs font-semibold text-blue-700 mb-1">Render ML Service URL</label>
+                                <input 
+                                    type="text" 
+                                    value={mlApiUrl}
+                                    onChange={handleUrlChange}
+                                    placeholder="https://your-service.onrender.com"
+                                    className="w-full p-2 text-sm bg-white border border-blue-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                                />
+                            </div>
+                            <p className="text-[10px] text-blue-600 leading-relaxed italic">
+                                * Paste your live Render URL here if the auto-detection fails on GitHub Pages. Changes save to browser storage.
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center mb-12"
             >
                 <div className="flex items-center justify-center gap-3 mb-4">
-                    <Zap className="text-blue-600" size={40} />
-                    <h1 className="text-5xl font-bold text-gray-900">Solar Grid Energy Prediction</h1>
+                    <TrendingUp className="text-blue-600" size={40} />
+                    <h1 className="text-5xl font-bold text-gray-900">GridSmart Predictor</h1>
                 </div>
-                <p className="text-xl text-gray-600">AI-powered forecasting for sustainable energy management</p>
+                <p className="text-xl text-gray-600">AI-driven energy generation forecasting for your solar array</p>
             </motion.div>
 
             {/* Input Section */}

@@ -69,25 +69,39 @@ def predict_energy(request: PredictionRequest):
 
 import os
 import base64
+import logging
 from groq import Groq
 
-# Initialize Groq client
-# The user will need to add GROQ_API_KEY to their Render environment variables.
-api_key = os.environ.get("GROQ_API_KEY")
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# For local testing, ensure the GROQ_API_KEY is set in your environment
+# Initialize Groq client
+api_key = os.environ.get("GROQ_API_KEY")
 if not api_key:
-    # Use a dummy key so the app boots, but fails gracefully on prediction if not provided
+    logger.warning("🚨 GROQ_API_KEY not found in environment. Using placeholder for boot.")
     api_key = "gsk_placeholder_replace_me_in_render"
 
-groq_client = Groq(api_key=api_key)
+try:
+    groq_client = Groq(api_key=api_key)
+    logger.info("✅ Groq client initialized")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize Groq client: {e}")
+    groq_client = None
 
 @app.post("/predict/defect")
 async def predict_defect(file: UploadFile = File(...)):
+    if not groq_client:
+        return {"error": "Groq client not initialized. Check API Key."}
+        
     try:
         # Read and base64 encode the image
         image_data = await file.read()
         base64_image = base64.b64encode(image_data).decode('utf-8')
+        
+        # Fixed lint: casting to str and slicing for log
+        image_head = str(base64_image)[:50]
+        logger.info(f"📸 Received image. Base64 head: {image_head}...")
         
         # Prepare the prompt for Groq
         prompt = """
@@ -101,6 +115,8 @@ async def predict_defect(file: UploadFile = File(...)):
         
         Respond ONLY with the category name, nothing else.
         """
+        
+        logger.info(f"🤖 Calling Groq Vision API (llama-3.2-11b-vision-preview)...")
         
         # Call Groq Vision API
         chat_completion = groq_client.chat.completions.create(
@@ -119,12 +135,13 @@ async def predict_defect(file: UploadFile = File(...)):
                 }
             ],
             model="llama-3.2-11b-vision-preview",
-            temperature=0.1, # Low temperature for consistent classification
+            temperature=0.1,
             max_tokens=20
         )
         
         # Parse the response
         response_text = chat_completion.choices[0].message.content.strip()
+        logger.info(f"📩 Raw Groq Response: '{response_text}'")
         
         # Ensure it matches one of our expected classes, otherwise default to Unknown
         valid_classes = ['Clean', 'Bird-drop', 'Dusty', 'Electrical-damage', 'Physical-Damage', 'Snow-Covered']
@@ -134,17 +151,19 @@ async def predict_defect(file: UploadFile = File(...)):
                 defect_type = valid_class
                 break
                 
+        logger.info(f"🎯 Derived Classification: {defect_type}")
+        
         # Determine if defective
         is_defective = defect_type != 'Clean'
         
         return {
             "is_defective": is_defective,
             "defect_type": defect_type,
-            "confidence": 0.95 # Groq doesn't provide raw logits, so we return a high static confidence for successful LLM classification
+            "confidence": 0.95
         }
     
     except Exception as e:
-        print(f"Groq API Error: {e}")
+        logger.error(f"❌ Groq API Error: {e}")
         return {"error": str(e)}
 
 # ==================== HEALTH CHECK ====================
