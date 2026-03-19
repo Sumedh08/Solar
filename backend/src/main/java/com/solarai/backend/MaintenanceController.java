@@ -16,7 +16,7 @@ public class MaintenanceController {
     public MaintenanceController(WebClient.Builder webClientBuilder) {
         String mlUrl = System.getenv("ML_SERVICE_URL");
         if (mlUrl == null || mlUrl.isEmpty()) {
-            mlUrl = "http://localhost:8000";
+            mlUrl = "https://solar-ai-ml.onrender.com";
         }
         this.webClient = webClientBuilder.baseUrl(mlUrl).build();
     }
