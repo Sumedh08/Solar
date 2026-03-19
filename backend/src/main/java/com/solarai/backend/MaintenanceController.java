@@ -14,15 +14,19 @@ public class MaintenanceController {
     private final WebClient webClient;
 
     public MaintenanceController(WebClient.Builder webClientBuilder) {
-        this.webClient = webClientBuilder.baseUrl("http://localhost:8000").build();
+        String mlUrl = System.getenv("ML_SERVICE_URL");
+        if (mlUrl == null || mlUrl.isEmpty()) {
+            mlUrl = "http://localhost:8000";
+        }
+        this.webClient = webClientBuilder.baseUrl(mlUrl).build();
     }
 
     @PostMapping(value = "/detect", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<String> detectDefect(@RequestPart("file") Mono<FilePart> filePartMono) {
         return filePartMono.flatMap(filePart -> webClient.post()
-                .uri("/predict/maintenance")
+                .uri("/predict/defect")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .bodyValue(filePart) // This might need proper multipart body construction
+                .bodyValue(filePart)
                 .retrieve()
                 .bodyToMono(String.class));
     }

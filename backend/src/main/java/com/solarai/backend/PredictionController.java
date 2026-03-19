@@ -14,13 +14,17 @@ public class PredictionController {
     private final WebClient webClient;
 
     public PredictionController(WebClient.Builder webClientBuilder) {
-        this.webClient = webClientBuilder.baseUrl("http://localhost:8000").build();
+        String mlUrl = System.getenv("ML_SERVICE_URL");
+        if (mlUrl == null || mlUrl.isEmpty()) {
+            mlUrl = "http://localhost:8000";
+        }
+        this.webClient = webClientBuilder.baseUrl(mlUrl).build();
     }
 
     @PostMapping("/generate")
     public Mono<String> predictGeneration(@RequestBody Map<String, Object> request) {
         return webClient.post()
-                .uri("/predict/generation")
+                .uri("/predict/energy")
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(String.class);
