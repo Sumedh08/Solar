@@ -10,6 +10,7 @@ import os
 import base64
 import logging
 from groq import Groq
+from prophet import Prophet
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -71,6 +72,54 @@ def predict_energy(request: PredictionRequest):
         return {"forecast": output}
     except Exception as e:
         logger.error(f"❌ Forecast Error: {e}")
+        return {"error": str(e)}
+
+@app.post("/predict/custom_energy")
+async def predict_custom_energy(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        df = pd.read_csv(io.BytesIO(contents))
+        
+        if 'timestamp' in df.columns and 'generation' in df.columns:
+            df = df.rename(columns={'timestamp': 'ds', 'generation': 'y'})
+        elif 'time' in df.columns and 'value' in df.columns:
+            df = df.rename(columns={'time': 'ds', 'value': 'y'})
+            
+        if 'ds' not in df.columns or 'y' not in df.columns:
+            df.columns = ['ds', 'y'] + list(df.columns[2:])
+
+        df['ds'] = pd.to_datetime(df['ds'], errors='coerce')
+        df['y'] = pd.to_numeric(df['y'], errors='coerce')
+        df = df.dropna(subset=['ds', 'y']).sort_values('ds')
+        
+        num_rows = len(df)
+        if num_rows > 10000:
+            df = df.iloc[-10000:]
+            logger.info(f"⚡ Downsampled custom dataset from {num_rows} to 10,000 rows for Fast Predict.")
+            
+        logger.info("🤖 Training custom Prophet model...")
+        custom_model = Prophet(yearly_seasonality=True, daily_seasonality=True)
+        custom_model.fit(df)
+        
+        future = custom_model.make_future_dataframe(periods=168, freq='H')
+        forecast = custom_model.predict(future)
+        
+        last_date = df['ds'].max()
+        future_forecast = forecast[forecast['ds'] > last_date]
+        
+        output = []
+        for _, row in future_forecast.iterrows():
+            output.append({
+                "time": row['ds'].isoformat(),
+                "prediction": max(0.0, float(row['yhat'])),
+                "lower_bound": max(0.0, float(row['yhat_lower'])),
+                "upper_bound": float(row['yhat_upper'])
+            })
+            
+        return {"forecast": output}
+
+    except Exception as e:
+        logger.error(f"❌ Custom Forecast Error: {e}")
         return {"error": str(e)}
 
 # ==================== DEFECT DETECTION (Groq Vision API) ====================

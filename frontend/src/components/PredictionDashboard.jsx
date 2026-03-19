@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Calendar, TrendingUp, Zap } from 'lucide-react';
+import { Calendar, TrendingUp, Zap, UploadCloud } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const PredictionDashboard = () => {
     const [startDate, setStartDate] = useState('2024-01-01');
     const [endDate, setEndDate] = useState('2024-01-07');
+    const [selectedFile, setSelectedFile] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -16,10 +17,20 @@ const PredictionDashboard = () => {
         try {
             // Hardcoded backend URL as requested by user
             const backendUrl = 'https://solar-ai-backend-lfi2.onrender.com';
-            const response = await axios.post(`${backendUrl}/api/prediction/generate`, {
-                start_date: startDate,
-                end_date: endDate
-            });
+            let response;
+            
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                response = await axios.post(`${backendUrl}/api/prediction/custom`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                response = await axios.post(`${backendUrl}/api/prediction/generate`, {
+                    start_date: startDate,
+                    end_date: endDate
+                });
+            }
             
             // Handle proxy response format (might be wrapped or raw depending on Mono type)
             const forecastData = response.data.forecast || response.data;
@@ -87,6 +98,19 @@ const PredictionDashboard = () => {
                         />
                     </div>
 
+                    <div className="w-full md:w-auto">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                            <UploadCloud size={18} className="text-gray-500" />
+                            Custom Data (CSV)
+                        </label>
+                        <input
+                            type="file"
+                            accept=".csv"
+                            onChange={(e) => setSelectedFile(e.target.files[0])}
+                            className="w-full md:w-56 bg-gray-50 border border-gray-300 rounded-lg p-[9px] focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm text-gray-900 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                    </div>
+
                     <button
                         onClick={fetchPrediction}
                         disabled={loading}
@@ -95,12 +119,12 @@ const PredictionDashboard = () => {
                         {loading ? (
                             <>
                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                Running Model...
+                                {selectedFile ? "Training Custom Model..." : "Running Model..."}
                             </>
                         ) : (
                             <>
                                 <TrendingUp size={20} />
-                                Predict Generation
+                                {selectedFile ? "Train & Predict" : "Predict Generation"}
                             </>
                         )}
                     </button>
