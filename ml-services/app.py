@@ -3,11 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
 import pandas as pd
-import numpy as np
+import pickle
+from typing import List
+import io
 import os
 import base64
 import logging
-from typing import List
 from groq import Groq
 
 # Configure logging
@@ -25,34 +26,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ==================== LIGHTWEIGHT GRIDSMART ENGINE ====================
+# ==================== ENERGY PREDICTION (Prophet) ====================
 
-def generate_forecast(start, end):
-    """
-    High-performance seasonal extrapolation for GridSmart.
-    Uses hourly sinusoidal trends to mimic real energy generation.
-    """
-    # Generate hourly timestamps
-    periods = int((end - start).total_seconds() / 3600) + 1
-    future_dates = pd.date_range(start=start, periods=periods, freq='H')
-    
-    # Simple seasonal model: Peak during midday (12:00), Zero at night (20:00 to 06:00)
-    output = []
-    for dt in future_dates:
-        hour = dt.hour
-        if 6 <= hour <= 18:
-            intensity = np.sin((hour - 6) / 12 * np.pi)
-            prediction = 5.0 * intensity + np.random.normal(0, 0.2)
-        else:
-            prediction = 0.0 + np.abs(np.random.normal(0, 0.05))
-            
-        output.append({
-            "time": dt.isoformat(),
-            "prediction": max(0.1, float(prediction)),
-            "lower_bound": max(0.05, float(prediction * 0.9)),
-            "upper_bound": float(prediction * 1.1)
-        })
-    return output
+# Load Prophet model
+try:
+    with open('brazil_e_model.pkl', 'rb') as f:
+        prophet_model = pickle.load(f)
+    logger.info("✅ Prophet model loaded successfully")
+except Exception as e:
+    logger.error(f"❌ Error loading Prophet model: {e}")
+    prophet_model = None
 
 class PredictionRequest(BaseModel):
     start_date: str
@@ -60,12 +43,32 @@ class PredictionRequest(BaseModel):
 
 @app.post("/predict/energy")
 def predict_energy(request: PredictionRequest):
+    if prophet_model is None:
+        return {"error": "Prophet model not loaded"}
+    
     try:
         start = datetime.strptime(request.start_date, '%Y-%m-%d')
         end = datetime.strptime(request.end_date, '%Y-%m-%d')
         
-        forecast = generate_forecast(start, end)
-        return {"forecast": forecast}
+        # Generate hourly timestamps
+        periods = int((end - start).total_seconds() / 3600) + 1
+        future_dates = pd.date_range(start=start, periods=periods, freq='H')
+        future_df = pd.DataFrame({'ds': future_dates})
+        
+        # Make predictions
+        forecast = prophet_model.predict(future_df)
+        
+        # Format output
+        output = []
+        for _, row in forecast.iterrows():
+            output.append({
+                "time": row['ds'].isoformat(),
+                "prediction": float(row['yhat']),
+                "lower_bound": float(row['yhat_lower']),
+                "upper_bound": float(row['yhat_upper'])
+            })
+        
+        return {"forecast": output}
     except Exception as e:
         logger.error(f"❌ Forecast Error: {e}")
         return {"error": str(e)}
@@ -156,7 +159,10 @@ def health_check():
     return {
         "status": "healthy",
         "service": "Solar AI ML Backend",
-        "vision": "ready" if groq_client else "not_ready"
+        "models": {
+            "prophet": "loaded" if prophet_model else "not_loaded",
+            "vision": "ready" if groq_client else "not_ready"
+        }
     }
 
 if __name__ == "__main__":
