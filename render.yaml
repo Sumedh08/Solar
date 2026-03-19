@@ -9,3 +9,17 @@ services:
     envVars:
       - key: PORT
         value: 8081
+
+  - type: web
+    name: solar-ai-ml
+    runtime: python
+    rootDir: ./ml-services
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    region: oregon
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: GROQ_API_KEY
+        value: placeholder_user_will_replace

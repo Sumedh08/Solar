@@ -30,7 +30,8 @@ const MaintenanceAlert = () => {
         formData.append('file', selectedFile);
 
         try {
-            const response = await axios.post('http://localhost:5000/predict/defect', formData, {
+            const mlApiUrl = import.meta.env.VITE_ML_API_URL || 'https://solar-ai-ml-prod.onrender.com';
+            const response = await axios.post(`${mlApiUrl}/predict/defect`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },

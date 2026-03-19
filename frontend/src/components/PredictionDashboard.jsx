@@ -15,7 +15,8 @@ const PredictionDashboard = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.post('http://localhost:5000/predict/energy', {
+            const mlApiUrl = import.meta.env.VITE_ML_API_URL || 'https://solar-ai-ml-prod.onrender.com';
+            const response = await axios.post(`${mlApiUrl}/predict/energy`, {
                 start_date: startDate,
                 end_date: endDate
             });
