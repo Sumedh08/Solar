@@ -30,7 +30,7 @@ const MaintenanceAlert = () => {
 
         try {
             // Hardcoded backend URL as requested by user
-            const backendUrl = 'https://solar-ai-backend-lfi2.onrender.com';
+            const backendUrl = 'https://solar-ai-backend.onrender.com';
             const response = await axios.post(`${backendUrl}/api/maintenance/detect`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
@@ -40,7 +40,7 @@ const MaintenanceAlert = () => {
             setResult(response.data);
         } catch (err) {
             console.error(err);
-            setError(`Analysis failed. Check if Backend is live at: https://solar-ai-backend-lfi2.onrender.com`);
+            setError(`Analysis failed. Check if Backend is live at: https://solar-ai-backend.onrender.com`);
         } finally {
             setLoading(false);
         }
