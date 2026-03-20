@@ -175,7 +175,7 @@ async def predict_defect(file: UploadFile = File(...)):
                     ],
                 }
             ],
-            model="llama-3.2-11b-vision-preview",
+            model="llama-3.2-90b-vision-preview",
             temperature=0.1,
             max_tokens=20
         )
