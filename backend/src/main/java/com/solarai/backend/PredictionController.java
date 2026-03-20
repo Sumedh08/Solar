@@ -36,7 +36,7 @@ public class PredictionController {
     }
 
     @PostMapping(value = "/custom", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Mono<String> predictCustomGeneration(@RequestPart("file") MultipartFile file) {
+    public Mono<String> predictCustomGeneration(@RequestParam("file") MultipartFile file) {
         try {
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
             builder.part("file", new ByteArrayResource(file.getBytes()) {
