@@ -16,7 +16,7 @@ const PredictionDashboard = () => {
         setError(null);
         try {
             // Hardcoded backend URL as requested by user
-            const backendUrl = 'https://solar-ai-backend.onrender.com';
+            const backendUrl = 'https://solar-ai-backend-eb69.onrender.com';
             let response;
             
             if (selectedFile) {
