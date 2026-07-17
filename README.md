@@ -1,135 +1,104 @@
-# Solar AI Platform
+# Solar.ai Platform
 
-An AI-powered solar energy platform for India, featuring solar ROI calculation, energy prediction, and panel defect detection.
+Agentic solar energy platform for India: **SunCalc** (ROI), **GridSmart** (forecast), **PanelGuard** (defects).
 
-## 🌟 Features
+Built with **LangGraph** + **LangChain-compatible tools** — one shared agent routes to feature tools. **No separate heavy ML model per feature.**
 
-### 1. **SunCalc** - Solar ROI Calculator
-- Calculate solar energy potential for your location
-- Estimate annual savings and breakeven period
-- Powered by NREL PVWatts API
-- Location-specific analysis for India
+## Architecture
 
-### 2. **GridSmart** - Energy Prediction
-- AI-powered energy demand forecasting
-- Prophet-based time series prediction
-- Interactive visualization with Recharts
-- Hourly prediction granularity
+```
+User (React)
+    │
+    ▼
+FastAPI  ── LangGraph agent
+    │           ├── calculator tool  → NREL PVWatts + India ROI math
+    │           ├── grid tool        → lightweight oneshot forecast
+    │           └── defect tool      → vision LLM (Groq → OpenRouter)
+```
 
-### 3. **PanelGuard** - Defect Detection
-- Deep learning-based defect classification
-- Detects 6 types of panel defects:
-  - Clean
-  - Bird-drop
-  - Dusty
-  - Snow-Covered
-  - Electrical-damage
-  - Physical-Damage
-- MobileNetV2 architecture
-- Real-time image analysis
+| Feature | How it works | Hosting notes |
+|--------|----------------|---------------|
+| **SunCalc** | NREL generation + PM Surya Ghar subsidy + net-metering ROI | API only, tiny |
+| **GridSmart** | Diurnal/seasonal profile or CSV oneshot (hour+trend) | **No Prophet/pickle** — free Render OK |
+| **PanelGuard** | Groq vision primary; OpenRouter if Groq fails | Needs API keys |
 
-## 🏗️ Architecture
+### Why not one ML model per feature?
+
+- Local CNNs / Prophet pickles are large, slow to cold-start, and often exceed free Render RAM.
+- One vision LLM + one oneshot numeric engine covers all three products cleanly.
+- A heavier grid model can be **added later** behind the same `/api/prediction/*` API.
+
+## Project layout
 
 ```
 solar-ai-platform/
-├── frontend/          # React + Vite + Tailwind CSS
-├── backend/           # Java Spring Boot
-└── ml-services/       # Python FastAPI + ML Models
+├── frontend/          # React + Vite + Tailwind
+└── ml-services/       # FastAPI + LangGraph backend
+    ├── app.py
+    ├── agent/         # graph, state, LLM clients
+    └── tools/         # calculator, defect, grid
 ```
 
-## 🚀 Getting Started
+## Quick start
 
-### Prerequisites
-- Node.js 18+
-- Java 17+
-- Python 3.8+
-- Maven
+### 1. Backend
 
-### Frontend Setup
+```bash
+cd solar-ai-platform/ml-services
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+# edit .env → GROQ_API_KEY, OPENROUTER_API_KEY (fallback), NREL_API_KEY
+uvicorn app:app --reload --port 5000
+```
+
+### 2. Frontend
+
 ```bash
 cd solar-ai-platform/frontend
 npm install
+# optional: echo VITE_API_URL=http://localhost:5000 > .env
 npm run dev
 ```
-Access at: `http://localhost:5173`
 
-### Backend Setup
-```bash
-cd solar-ai-platform/backend
-mvn spring-boot:run
-```
-Access at: `http://localhost:8081`
+Or run `start_solar_ai.bat` from the repo root.
 
-### ML Services Setup
-```bash
-cd solar-ai-platform/ml-services
-pip install -r requirements.txt
-python app.py
-```
-Access at: `http://localhost:5000`
+## API
 
-## 📊 Tech Stack
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/` | Health + config flags |
+| POST | `/api/calculator/calculate` | Generation + optional full ROI |
+| POST | `/api/prediction/generate` | Date-range solar forecast |
+| POST | `/api/prediction/custom` | CSV oneshot forecast |
+| POST | `/api/maintenance/detect` | Panel image classification |
+| POST | `/api/agent` | LangGraph multi-intent agent |
 
-### Frontend
-- React 18
-- Vite
-- Tailwind CSS
-- Framer Motion
-- Recharts
-- Axios
+### Vision models (defaults)
 
-### Backend
-- Java 17
-- Spring Boot
-- Spring WebFlux
-- Maven
+- **Groq (primary):** `meta-llama/llama-4-scout-17b-16e-instruct`
+- **OpenRouter (fallback):** `google/gemma-3-27b-it:free`
 
-### ML Services
-- Python
-- FastAPI
-- PyTorch
-- Prophet
-- Pillow
+Override with `GROQ_VISION_MODEL` / `OPENROUTER_VISION_MODEL`.
 
-## 🌍 India Solar Market Context
+### Grid model — ship now vs later
 
-Based on CEEW research:
-- **Technical Potential**: 637 GW
-- **Economic Potential**: 102 GW
-- **Market Potential**: 11 GW (~5.5 million households)
+**Now (included):** `diurnal_seasonal_v1` + `seasonal_hour_trend_v1` (numpy/pandas only).
 
-## 📝 API Endpoints
+**Later (optional):** train a compact model (e.g. small sklearn / ONNX &lt; 50MB), load via env `FORECAST_MODEL_PATH`, keep the same response shape `{ forecast: [{ time, prediction, lower_bound, upper_bound }] }`. Do **not** bring back multi-GB Prophet pickles on free Render.
 
-### Solar Calculator
-```
-POST http://localhost:8081/api/calculator/calculate
-```
+## Deploy (Render)
 
-### Energy Prediction
-```
-POST http://localhost:5000/predict/energy
-Body: { "start_date": "2024-01-01", "end_date": "2024-01-07" }
-```
+`render.yaml` deploys `ml-services` as one free Python web service. Set secrets:
 
-### Defect Detection
-```
-POST http://localhost:5000/predict/defect
-Body: FormData with 'file' field
-```
+- `GROQ_API_KEY`
+- `OPENROUTER_API_KEY`
+- `NREL_API_KEY` (free from [NREL Developer Network](https://developer.nrel.gov/signup/))
 
-## 🎨 Design Philosophy
+Frontend: set `VITE_API_URL` to the Render URL when building.
 
-Inspired by Tesla's minimalist design:
-- Clean, light theme
-- Full-screen scrollable sections
-- Smooth scroll-snap animations
-- Minimal overlays on hero images
-- Professional typography
+## License
 
-## 📄 License
-
-MIT License
-
-## 👨‍💻 Author
-
-Built with ❤️ for sustainable energy in India
+MIT
