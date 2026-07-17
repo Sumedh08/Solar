@@ -4,7 +4,7 @@
  */
 export const API_BASE =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? "http://localhost:5000" : "https://solar-ai-ml.onrender.com");
+  (import.meta.env.DEV ? "http://localhost:5000" : "https://solar-lpk6.onrender.com");
 
 export const endpoints = {
   calculate: `${API_BASE}/api/calculator/calculate`,
