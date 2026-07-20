@@ -1,4 +1,4 @@
-# Solar.ai Platform
+# Solar.agent Platform
 
 Agentic solar energy platform for India: **SunCalc** (ROI), **GridSmart** (forecast), **PanelGuard** (defects).
 
