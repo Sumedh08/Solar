@@ -5,7 +5,7 @@ Intent = Literal["calculator", "defect", "grid", "chat", "unknown"]
 
 
 class SolarState(TypedDict, total=False):
-    """Shared state for the Solar.ai LangGraph agent."""
+    """Shared state for the Solar.agent LangGraph agent."""
 
     messages: List[Dict[str, str]]
     intent: Intent

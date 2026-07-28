@@ -1,1 +1,1 @@
-"""Feature tools used by the Solar.ai agent graph."""
+"""Feature tools used by the Solar.agent agent graph."""

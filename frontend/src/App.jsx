@@ -19,7 +19,7 @@ function App() {
         <nav className="nav-glass">
             <div className="nav-inner">
                 <button onClick={() => setActivePage('home')} className="nav-brand">
-                    <Sun size={22} /> SOLAR.ai
+                    <Sun size={22} /> SOLAR.agent
                 </button>
                 <button onClick={() => setActivePage('home')} className="nav-back">
                     ← Back to Home
@@ -55,7 +55,7 @@ function App() {
             <nav className="nav-glass">
                 <div className="nav-inner">
                     <button onClick={() => window.scrollTo({ top: 0 })} className="nav-brand">
-                        <Sun size={22} /> SOLAR.ai
+                        <Sun size={22} /> SOLAR.agent
                     </button>
 
                     {/* Desktop links */}
@@ -180,9 +180,9 @@ function App() {
                         viewport={{ once: true }}
                         className="max-w-4xl mx-auto text-center"
                     >
-                        <h1 className="text-5xl font-bold text-gray-900 mb-6">About SOLAR.ai</h1>
+                        <h1 className="text-5xl font-bold text-gray-900 mb-6">About SOLAR.agent</h1>
                         <p className="text-xl text-gray-700 leading-relaxed mb-8">
-                            SOLAR.ai helps Indian homeowners make confident rooftop solar decisions — from
+                            SOLAR.agent helps Indian homeowners make confident rooftop solar decisions — from
                             estimating costs and savings, to forecasting energy generation, to checking
                             panel health with a single photo.
                         </p>

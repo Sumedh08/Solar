@@ -1,5 +1,5 @@
 """
-Solar.ai — unified FastAPI backend (LangGraph agentic architecture).
+Solar.agent — unified FastAPI backend (LangGraph agentic architecture).
 
 Endpoints used by the React frontend:
   POST /api/calculator/calculate
@@ -33,10 +33,10 @@ from tools.defect import detect_panel_defect
 from tools.grid import forecast_energy
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("solar.ai")
+logger = logging.getLogger("solar.agent")
 
 app = FastAPI(
-    title="Solar.ai API",
+    title="Solar.agent API",
     description="Agentic solar platform: SunCalc · GridSmart · PanelGuard",
     version="2.0.0",
 )
@@ -106,7 +106,7 @@ class ChatRequest(BaseModel):
 def health():
     return {
         "status": "healthy",
-        "service": "Solar.ai Agentic Backend",
+        "service": "Solar.agent Agentic Backend",
         "architecture": "LangGraph + shared tools",
         "features": {
             "suncalc": "NREL PVWatts + India ROI (no ML)",
