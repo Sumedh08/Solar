@@ -1,11 +1,11 @@
 """
-LangGraph agent for Solar.ai.
+LangGraph agent for Solar.agent.
 
 One shared graph routes work to feature tools — no separate ML model per feature:
   • calculator → NREL + India ROI math
   • defect     → shared vision LLM (Groq → OpenRouter)
-  • grid       → lightweight oneshot forecast
-  • chat       → short text answer about solar.ai
+  • grid       → Fourier+IRLS one-shot forecast
+  • chat       → short text answer about solar.agent
 """
 
 from __future__ import annotations
@@ -126,7 +126,7 @@ async def node_chat(state: SolarState) -> Dict[str, Any]:
     msgs = state.get("messages") or []
     last = msgs[-1]["content"] if msgs else "Hello"
     system = (
-        "You are Solar.ai assistant for India rooftop solar. "
+        "You are Solar.agent assistant for India rooftop solar. "
         "You help with ROI (SunCalc), panel defects (PanelGuard), "
         "and generation forecasting (GridSmart). Be concise and practical."
     )
@@ -134,7 +134,7 @@ async def node_chat(state: SolarState) -> Dict[str, Any]:
         answer = text_complete(last, system=system, max_tokens=400)
         if not answer:
             answer = (
-                "Solar.ai offers: SunCalc (ROI), GridSmart (forecast), PanelGuard (defects). "
+                "Solar.agent offers: SunCalc (ROI), GridSmart (forecast), PanelGuard (defects). "
                 "Use the product pages or ask a specific question."
             )
         return {"result": {"reply": answer}, "error": None, "provider_used": "llm"}

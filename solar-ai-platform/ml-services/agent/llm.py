@@ -52,8 +52,8 @@ def _openrouter_client() -> Optional[OpenAI]:
         api_key=key,
         base_url="https://openrouter.ai/api/v1",
         default_headers={
-            "HTTP-Referer": "https://solar.ai",
-            "X-Title": "Solar.ai",
+            "HTTP-Referer": "https://solar.agent",
+            "X-Title": "Solar.agent",
         },
     )
 

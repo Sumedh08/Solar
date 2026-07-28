@@ -239,7 +239,7 @@ export default function ChatWidget() {
                         <Sun size={18} />
                     </div>
                     <div className="chat-header-text">
-                        <h3>Solar.ai Assistant</h3>
+                        <h3>Solar.agent Assistant</h3>
                         <p>Powered by LangGraph + OpenRouter</p>
                     </div>
                 </div>
@@ -266,7 +266,7 @@ export default function ChatWidget() {
                         <div className="chat-welcome-icon">
                             <Sun size={24} />
                         </div>
-                        <h4>Welcome to Solar.ai Chat</h4>
+                        <h4>Welcome to Solar.agent Chat</h4>
                         <p>
                             Ask about rooftop solar ROI, energy forecasts,<br />
                             panel defects, subsidies, or upload a panel photo.

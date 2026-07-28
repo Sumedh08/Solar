@@ -1,4 +1,4 @@
-# Solar.ai Platform
+# Solar.agent Platform
 
 Agentic solar energy platform for India: **SunCalc** (ROI), **GridSmart** (forecast), **PanelGuard** (defects).
 
@@ -85,7 +85,7 @@ Override with `GROQ_VISION_MODEL` / `OPENROUTER_VISION_MODEL`.
 
 ### Grid model — ship now vs later
 
-**Now (included):** `diurnal_seasonal_v1` + `seasonal_hour_trend_v1` (numpy/pandas only).
+**Now (included):** `diurnal_seasonal_v1` + `fourier_irls_v2` (numpy/pandas only — Fourier + robust IRLS regression).
 
 **Later (optional):** train a compact model (e.g. small sklearn / ONNX &lt; 50MB), load via env `FORECAST_MODEL_PATH`, keep the same response shape `{ forecast: [{ time, prediction, lower_bound, upper_bound }] }`. Do **not** bring back multi-GB Prophet pickles on free Render.
 

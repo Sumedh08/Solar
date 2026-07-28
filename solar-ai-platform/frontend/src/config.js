@@ -1,5 +1,5 @@
 /**
- * Single API base for Solar.ai backend (Python FastAPI + LangGraph).
+ * Single API base for Solar.agent backend (Python FastAPI + LangGraph).
  * Override with VITE_API_URL in .env for production.
  */
 export const API_BASE =

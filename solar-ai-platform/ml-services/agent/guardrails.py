@@ -1,5 +1,5 @@
 """
-Topic guardrails for Solar.ai chat.
+Topic guardrails for Solar.agent chat.
 
 Multi-layer (industry pattern):
   1. Fast lexical allow / deny
@@ -39,7 +39,7 @@ DENY_KEYWORDS = (
 )
 
 REJECTION_MESSAGE = (
-    "I'm Solar.ai — I only help with **solar energy, electricity, grid forecasting, "
+    "I'm Solar.agent — I only help with **solar energy, electricity, grid forecasting, "
     "rooftop ROI, subsidies, and panel health**.\n\n"
     "Try asking about:\n"
     "• ROI for a 3 kW rooftop system in Delhi\n"
@@ -85,7 +85,7 @@ def llm_topic_guard(message: str, classifier_fn) -> bool:
     True if on-topic. classifier_fn(prompt, system, max_tokens) -> str
     """
     system = (
-        "You are a strict topic classifier for Solar.ai. "
+        "You are a strict topic classifier for Solar.agent. "
         "ALLOWED topics ONLY: solar PV, rooftop solar, electricity bills, energy generation, "
         "power grid forecasting, solar panel defects/maintenance, India solar subsidies, "
         "ROI of solar installs, renewable energy related to solar/electricity. "

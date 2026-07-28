@@ -1,1 +1,1 @@
-"""Solar.ai LangGraph agent package."""
+"""Solar.agent LangGraph agent package."""

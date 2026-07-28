@@ -1,5 +1,5 @@
 """
-Solar.ai conversational agent (LangGraph).
+Solar.agent conversational agent (LangGraph).
 
 Flow:
   guardrail → route intent → tool (optional) → reply (OpenRouter free model)
@@ -44,7 +44,7 @@ class ChatState(TypedDict, total=False):
     defect_media_type: Optional[str]
 
 
-SYSTEM_SOLAR = """You are Solar.ai, a professional assistant for solar energy in India.
+SYSTEM_SOLAR = """You are Solar.agent, a professional assistant for solar energy in India.
 
 You help with:
 - Rooftop solar ROI, costs, subsidies (PM Surya Ghar), payback

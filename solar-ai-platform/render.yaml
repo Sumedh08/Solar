@@ -1,7 +1,7 @@
 services:
   # Single Python agentic backend (LangGraph + tools)
   - type: web
-    name: solar-ai-ml
+    name: solar-agent-ml
     runtime: python
     rootDir: ./ml-services
     buildCommand: pip install -r requirements.txt
